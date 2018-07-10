@@ -6,7 +6,7 @@ bl_info = {
 	"location": "Properties > Material",
 	"description": "Append material",
 	"warning": "",
-	"wiki_url": "",
+	"wiki_url": "https://github.com/Hichigo/NexusMaterialManager",
 	"category": "Material",
 }
 
