@@ -157,9 +157,6 @@ class OBJECT_OT_AddButton(bpy.types.Operator):
 					break
 
 		if key == True:
-			print(filepath)
-			print(mat_name)
-			print(filepath_mat_section)
 			bpy.ops.wm.append(filepath=filepath, filename=mat_name, directory=filepath_mat_section)
 
 		return{'FINISHED'}
