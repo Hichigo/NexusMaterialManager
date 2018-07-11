@@ -100,9 +100,9 @@ material_collections = {}
 class MaterialPreviewsPanel(bpy.types.Panel):
 
 	bl_label = "Nexus Material Manager"
-	bl_space_type = 'VIEW_3D'
-	bl_region_type = 'TOOLS'
-	bl_category = "Nexus Material Manager"
+	bl_space_type = 'PROPERTIES'
+	bl_region_type = 'WINDOW'
+	bl_category = "material"
 
 	def draw(self, context):
 		material_prev = bpy.data.window_managers["WinMan"].material_previews
