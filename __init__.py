@@ -1,7 +1,7 @@
 bl_info = {
 	"name": "Nexus Material Manager",
 	"author": "Nexus Studio",
-	"version": (0, 1, 2),
+	"version": (0, 2, 3),
 	"blender": (2, 79, 0),
 	"location": "Properties > Material",
 	"description": "Append material",
@@ -37,7 +37,6 @@ class MaterialPreferences(bpy.types.AddonPreferences):
 def make_material_category(path):
 
 	dirs = os.listdir(path)
-	print(dirs)
 	i = 0
 	mode_options = []
 
@@ -100,9 +99,15 @@ material_collections = {}
 class MaterialPreviewsPanel(bpy.types.Panel):
 
 	bl_label = "Nexus Material Manager"
+	bl_idname = "nexus_mat_manager"
 	bl_space_type = 'PROPERTIES'
 	bl_region_type = 'WINDOW'
-	bl_category = "material"
+	bl_context = 'material'
+
+
+	@classmethod
+	def poll(cls, context):
+		return context.scene.render.engine == 'CYCLES' and context.active_object.material_slots.data.active_material
 
 	def draw(self, context):
 		material_prev = bpy.data.window_managers["WinMan"].material_previews
@@ -158,6 +163,8 @@ class OBJECT_OT_AddButton(bpy.types.Operator):
 
 		if key == True:
 			bpy.ops.wm.append(filepath=filepath, filename=mat_name, directory=filepath_mat_section)
+			context.active_object.material_slots[0].material = bpy.data.materials[mat_name]
+
 
 		return{'FINISHED'}
 
