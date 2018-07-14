@@ -1,7 +1,7 @@
 bl_info = {
 	"name": "Nexus Material Manager",
 	"author": "Nexus Studio",
-	"version": (0, 2, 3),
+	"version": (0, 2, 5),
 	"blender": (2, 79, 0),
 	"location": "Properties > Material",
 	"description": "Append material",
@@ -22,7 +22,7 @@ class MaterialPreferences(bpy.types.AddonPreferences):
 
 	path_to_material = bpy.types.Scene.path_to_material = StringProperty(
 		name="Path",
-		default=os.path.join(os.path.dirname(__file__), "Materials"),
+		default=os.path.join(os.path.dirname(__file__), "Resource"),
 		description="The path to your materials",
 		subtype="DIR_PATH",
 	)
@@ -34,7 +34,7 @@ class MaterialPreferences(bpy.types.AddonPreferences):
 		col.prop(self, "path_to_material")
 
 
-def make_material_category(path):
+def make_enum(path):
 
 	dirs = os.listdir(path)
 	i = 0
@@ -48,18 +48,31 @@ def make_material_category(path):
 
 	return mode_options
 
-############################ Material ##########################
-def enum_material_category(self, context):
-	path_material = bpy.context.window_manager.material_dir
+############################ Library ##########################
+def enum_library_mat(self, context):
+	resource_dir = bpy.context.window_manager.resource_dir
+	path_material = os.path.join(resource_dir, "Materials")
 
-	return make_material_category(path_material)
+	return make_enum(path_material)
+
+
+
+############################ Material ##########################
+def enum_type_mat(self, context):
+	resource_dir = bpy.context.window_manager.resource_dir
+	category = bpy.context.window_manager.library_mat
+	path_category = os.path.join(resource_dir, "Materials", category)
+
+	return make_enum(path_category)
+
+
 
 
 def enum_previews_material_items(self, context):
 	enum_items = []
 
-	category = bpy.data.window_managers['WinMan'].material_category
-	path_material = bpy.data.window_managers['WinMan'].material_dir
+	category = bpy.data.window_managers['WinMan'].type_mat
+	path_material = bpy.data.window_managers['WinMan'].resource_dir
 	directory = os.path.join(path_material, category)
 	image_extensions = (".jpg", ".JPG", ".png", ".jpeg")
 
@@ -118,13 +131,18 @@ class MaterialPreviewsPanel(bpy.types.Panel):
 ############## Material Panel ##############
 
 		col = layout.column()
-		col.prop(wm, "material_dir")
+		col.prop(wm, "resource_dir")
 
 		box = layout.box()
 		box.label(text="MATERIAL")
-####### Drop Down Menu
+####### Library
 		row = box.row()
-		row.prop(wm, "material_category", text="")
+		row.label("Library")
+		row.prop(wm, "library_mat", text="")
+####### Type material
+		row = box.row()
+		row.label("Type")
+		row.prop(wm, "type_mat", text="")
 ####### Previews
 		row = box.row()
 		row.scale_y = 1.5
@@ -138,14 +156,14 @@ class MaterialPreviewsPanel(bpy.types.Panel):
 		row = box.row()
 		row.operator("add.material", icon="ZOOMIN", text="Add Material")
 
-class OBJECT_OT_AddButton(bpy.types.Operator):
+class OBJECT_OT_AddMaterial(bpy.types.Operator):
 	bl_idname = "add.material"
 	bl_label = "Add Material"
 
 	def execute(self, context):
 		mat_name = os.path.splitext(bpy.data.window_managers["WinMan"].material_previews)[0]
-		category = bpy.data.window_managers['WinMan'].material_category
-		path_material = bpy.data.window_managers['WinMan'].material_dir
+		category = bpy.data.window_managers['WinMan'].type_mat
+		path_material = bpy.data.window_managers['WinMan'].resource_dir
 		filepath = os.path.join(path_material, category + ".blend")
 		filepath_mat_section = filepath + "\\Material\\"
 		key = True
@@ -168,7 +186,18 @@ class OBJECT_OT_AddButton(bpy.types.Operator):
 
 		return{'FINISHED'}
 
+class NexusMaterialManager_WM_Properties(bpy.types.PropertyGroup):
+
+	material_category = EnumProperty(
+		items=enum_type_mat
+	)
+
+	material_previews = EnumProperty(
+		items=enum_previews_material_items
+	)
+
 def register():
+	# WindowManager.nexus_material_manager = bpy.props.PointerProperty(type=NexusMaterialManager_WM_Properties)
 	bpy.utils.register_class(MaterialPreferences)
 	bpy.utils.register_module(__name__)
 
@@ -176,19 +205,25 @@ def register():
 	user_preferences = bpy.context.user_preferences
 	addon_prefs = user_preferences.addons[__name__].preferences
 
-	WindowManager.material_dir = StringProperty(
+	WindowManager.resource_dir = StringProperty(
 		name="Folder Path",
 		subtype="DIR_PATH",
 		default=addon_prefs.path_to_material
-		)
+	)
 
-	WindowManager.material_category = EnumProperty(
-		items=enum_material_category
-		)
+	WindowManager.library_mat = EnumProperty(
+		name="Library",
+		items=enum_library_mat
+	)
+
+	WindowManager.type_mat = EnumProperty(
+		name="Type",
+		items=enum_type_mat
+	)
 
 	WindowManager.material_previews = EnumProperty(
 		items=enum_previews_material_items
-		)
+	)
 
 	pcoll = bpy.utils.previews.new()
 	pcoll.material_previews_dir = ""
@@ -205,9 +240,10 @@ def unregister():
 		bpy.utils.previews.remove(pcoll)
 	material_collections.clear()
 
-	del WindowManager.material_dir
+	# del WindowManager.nexus_material_manager.resource_dir
+	del WindowManager.resource_dir
 	del WindowManager.material_previews
-	del WindowManager.material_category
+	del WindowManager.type_mat
 
 
 
