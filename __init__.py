@@ -196,6 +196,26 @@ class OBJECT_OT_AddMaterial(bpy.types.Operator):
 		return{'FINISHED'}
 
 
+class OBJECT_OT_AddGroup(bpy.types.Operator):
+	bl_idname = "add.group"
+	bl_label = "Add Group"
+
+def execute(self, context):
+	resource_path = bpy.data.window_managers['WinMan'].resource_dir
+	filepath = os.path.join(resource_path, "Groups", "groups" + ".blend")
+
+	with bpy.data.libraries.load(filepath, False) as (data_from, data_to):
+		# node_group = context.scene.thumbs_tex # TODO: Get name node group
+		if not node_group in bpy.data.node_groups:
+			data_to.node_groups = [node_group]
+
+	# Add the node
+	active_material = bpy.context.object.active_material
+	bpy.ops.node.select_all(action='DESELECT')
+	group = bpy.data.materials[active_material.name].node_tree.nodes.new("ShaderNodeGroup")
+	group.node_tree = bpy.data.node_groups[node_group]
+	group.location = bpy.context.space_data.edit_tree.view_center
+
 ######################################################################
 ############################ Library path ############################
 ######################################################################
