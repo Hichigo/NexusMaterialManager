@@ -1,7 +1,7 @@
 bl_info = {
 	"name": "Nexus Material Manager",
 	"author": "Nexus Studio",
-	"version": (0, 2, 5),
+	"version": (0, 3, 5),
 	"blender": (2, 79, 0),
 	"location": "Properties > Material",
 	"description": "Append material",
@@ -71,9 +71,11 @@ def enum_type_mat(self, context):
 def enum_previews_material_items(self, context):
 	enum_items = []
 
-	category = bpy.data.window_managers['WinMan'].type_mat
-	path_material = bpy.data.window_managers['WinMan'].resource_dir
-	directory = os.path.join(path_material, category)
+	resource_path = bpy.data.window_managers['WinMan'].resource_dir
+	library_mat = bpy.data.window_managers['WinMan'].library_mat
+	type_mat = bpy.data.window_managers['WinMan'].type_mat
+	directory = os.path.join(resource_path, "Materials", library_mat, type_mat, "renders")
+
 	image_extensions = (".jpg", ".JPG", ".png", ".jpeg")
 
 	if context is None:
@@ -130,11 +132,14 @@ class MaterialPreviewsPanel(bpy.types.Panel):
 
 ############## Material Panel ##############
 
-		col = layout.column()
+		box = layout.box()
+		box.label(text="Library Folder:")
+		col = box.column(align = True)
 		col.prop(wm, "resource_dir")
+		col.operator("library.library_materials_path", icon="FILE_FOLDER", text="Open Library Folder")
 
 		box = layout.box()
-		box.label(text="MATERIAL")
+		box.label(text="Material Manager")
 ####### Library
 		row = box.row()
 		row.label("Library")
@@ -154,7 +159,9 @@ class MaterialPreviewsPanel(bpy.types.Panel):
 		row.label(os.path.splitext(material_prev)[0])
 ####### Add Button
 		row = box.row()
-		row.operator("add.material", icon="ZOOMIN", text="Add Material")
+		col = row.column(align = True)
+		col.operator("add.material", icon="ZOOMIN", text="Add Material")
+		col.operator("library.asset_material_path", icon="FILE_FOLDER", text="Open Material Folder")
 
 class OBJECT_OT_AddMaterial(bpy.types.Operator):
 	bl_idname = "add.material"
@@ -162,9 +169,11 @@ class OBJECT_OT_AddMaterial(bpy.types.Operator):
 
 	def execute(self, context):
 		mat_name = os.path.splitext(bpy.data.window_managers["WinMan"].material_previews)[0]
-		category = bpy.data.window_managers['WinMan'].type_mat
-		path_material = bpy.data.window_managers['WinMan'].resource_dir
-		filepath = os.path.join(path_material, category + ".blend")
+		resource_path = bpy.data.window_managers['WinMan'].resource_dir
+		library_mat = bpy.data.window_managers['WinMan'].library_mat
+		type_mat = bpy.data.window_managers['WinMan'].type_mat
+		filepath = os.path.join(resource_path, "Materials", library_mat, type_mat, type_mat + ".blend")
+
 		filepath_mat_section = filepath + "\\Material\\"
 		key = True
 
@@ -185,6 +194,40 @@ class OBJECT_OT_AddMaterial(bpy.types.Operator):
 
 
 		return{'FINISHED'}
+
+
+######################################################################
+############################ Library path ############################
+######################################################################
+
+class Library_Materials_Path(bpy.types.Operator):
+
+	bl_idname = "library.library_materials_path"
+	bl_label = "Library Materials Path"
+	
+	def execute(self, context):
+		resource_dir = bpy.context.window_manager.resource_dir
+		bpy.ops.wm.path_open(filepath=resource_dir)
+		return {'FINISHED'}
+
+######################################################################
+############################ Asset path ############################
+######################################################################
+
+class Asset_Material_Path(bpy.types.Operator):
+
+	bl_idname = "library.asset_material_path"
+	bl_label = "Asset Material Path"
+	
+	def execute(self, context):
+		
+		resource_path = bpy.data.window_managers['WinMan'].resource_dir
+		library_mat = bpy.data.window_managers['WinMan'].library_mat
+		type_mat = bpy.data.window_managers['WinMan'].type_mat
+		filepath = os.path.join(resource_path, "Materials", library_mat, type_mat)
+
+		bpy.ops.wm.path_open(filepath=filepath)
+		return {'FINISHED'}
 
 class NexusMaterialManager_WM_Properties(bpy.types.PropertyGroup):
 
