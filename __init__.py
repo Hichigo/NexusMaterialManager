@@ -163,6 +163,8 @@ class MaterialPreviewsPanel(bpy.types.Panel):
 		col.operator("add.material", icon="ZOOMIN", text="Add Material")
 		col.operator("library.asset_material_path", icon="FILE_FOLDER", text="Open Material Folder")
 
+
+
 class OBJECT_OT_AddMaterial(bpy.types.Operator):
 	bl_idname = "add.material"
 	bl_label = "Add Material"
