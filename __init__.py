@@ -1,7 +1,7 @@
 bl_info = {
 	"name": "Nexus Material Manager",
 	"author": "Nexus Studio",
-	"version": (0, 3, 5),
+	"version": (0, 4, 0),
 	"blender": (2, 79, 0),
 	"location": "Properties > Material",
 	"description": "Append material",
@@ -107,9 +107,90 @@ def enum_previews_material_items(self, context):
 	pcoll.material_previews = enum_items
 	pcoll.material_previews_dir = directory
 	return pcoll.material_previews
-	return
 
 material_collections = {}
+
+
+def enum_previews_group_items(self, context):
+	enum_items = []
+	resource_path = bpy.data.window_managers['WinMan'].resource_dir
+	directory = os.path.join(resource_path, "Groups", "renders")
+
+	image_extensions = (".jpg", ".JPG", ".png", ".jpeg")
+
+	if context is None:
+		return enum_items
+
+	wm = context.window_manager
+
+	pcoll = group_collections["main"]
+
+	if directory == pcoll.material_previews_dir:
+		return pcoll.material_previews
+	if directory and os.path.exists(directory):
+		image_paths = []
+		for fn in os.listdir(directory):
+			if fn.endswith(image_extensions):
+				image_paths.append(fn)
+
+		for i, name in enumerate(image_paths):
+			filepath = os.path.join(directory, name)
+
+			if filepath in pcoll:
+				enum_items.append((name, name, "", pcoll[filepath].icon_id, i))
+			else:
+				thumb = pcoll.load(filepath, filepath, 'IMAGE')
+				enum_items.append((name, name, "", thumb.icon_id, i))
+	enum_items.sort()
+
+	return enum_items
+
+group_collections = {}
+
+class GroupPreviewsPanel(bpy.types.Panel):
+
+	bl_label = "Nexus Material Manager"
+	bl_idname = "nexus_mat_manager"
+	bl_space_type = 'NODE_EDITOR'
+	bl_region_type = 'UI'
+
+
+	@classmethod
+	def poll(cls, context):
+		if bpy.context.object.active_material:
+			return context.scene.render.engine == 'CYCLES' and bpy.context.space_data.tree_type == 'ShaderNodeTree' and bpy.context.space_data.shader_type == 'OBJECT' and bpy.context.object.active_material.use_nodes
+
+	def draw(self, context):
+		group_prev = bpy.data.window_managers["WinMan"].group_previews
+		layout = self.layout
+		wm = context.window_manager
+
+
+############## Material Panel ##############
+
+		box = layout.box()
+		box.label(text="Library Folder:")
+		col = box.column(align = True)
+		col.prop(wm, "resource_dir")
+		col.operator("library.library_materials_path", icon="FILE_FOLDER", text="Open Library Folder")
+		box = layout.box()
+		box.label(text="Material Manager")
+####### Previews
+		row = box.row()
+		row.scale_y = 1.5
+		row.template_icon_view(wm, "group_previews", show_labels=True)
+####### Model Name
+		row = box.row()
+		row.alignment = 'CENTER'
+		row.scale_y = 0.5
+		row.label(os.path.splitext(group_prev)[0])
+####### Add Button
+		row = box.row()
+		col = row.column(align = True)
+		col.operator("add.group", icon="ZOOMIN", text="Add Group")
+
+
+
 
 class MaterialPreviewsPanel(bpy.types.Panel):
 
@@ -152,7 +233,7 @@ class MaterialPreviewsPanel(bpy.types.Panel):
 		row = box.row()
 		row.scale_y = 1.5
 		row.template_icon_view(wm, "material_previews", show_labels=True)
-####### Model Name
+####### Material Name
 		row = box.row()
 		row.alignment = 'CENTER'
 		row.scale_y = 0.5
@@ -198,25 +279,31 @@ class OBJECT_OT_AddMaterial(bpy.types.Operator):
 		return{'FINISHED'}
 
 
-class OBJECT_OT_AddGroup(bpy.types.Operator):
+class AddGroup(bpy.types.Operator):
 	bl_idname = "add.group"
 	bl_label = "Add Group"
+	bl_options = {'UNDO'}
 
-def execute(self, context):
-	resource_path = bpy.data.window_managers['WinMan'].resource_dir
-	filepath = os.path.join(resource_path, "Groups", "groups" + ".blend")
+	def execute(self, context):
+		resource_path = bpy.data.window_managers['WinMan'].resource_dir
+		filepath = os.path.join(resource_path, "Groups", "groups" + ".blend")
+		node_group = os.path.splitext(bpy.data.window_managers['WinMan'].group_previews)[0] #context.scene.thumbs_tex # TODO: Get name node group
+		print("              -", node_group)
 
-	with bpy.data.libraries.load(filepath, False) as (data_from, data_to):
-		# node_group = context.scene.thumbs_tex # TODO: Get name node group
-		if not node_group in bpy.data.node_groups:
-			data_to.node_groups = [node_group]
+		with bpy.data.libraries.load(filepath, False) as (data_from, data_to):
+			node_group = os.path.splitext(bpy.data.window_managers['WinMan'].group_previews)[0] #context.scene.thumbs_tex # TODO: Get name node group
+			print("              -", node_group)
+			if not node_group in bpy.data.node_groups:
+				data_to.node_groups = [node_group]
 
-	# Add the node
-	active_material = bpy.context.object.active_material
-	bpy.ops.node.select_all(action='DESELECT')
-	group = bpy.data.materials[active_material.name].node_tree.nodes.new("ShaderNodeGroup")
-	group.node_tree = bpy.data.node_groups[node_group]
-	group.location = bpy.context.space_data.edit_tree.view_center
+		# Add the node
+		active_material = bpy.context.object.active_material
+		bpy.ops.node.select_all(action='DESELECT')
+		group = bpy.data.materials[active_material.name].node_tree.nodes.new("ShaderNodeGroup")
+		group.node_tree = bpy.data.node_groups[node_group]
+		group.location = bpy.context.space_data.edit_tree.view_center
+
+		return{'FINISHED'}
 
 ######################################################################
 ############################ Library path ############################
@@ -290,11 +377,21 @@ def register():
 		items=enum_previews_material_items
 	)
 
+	WindowManager.group_previews = EnumProperty(
+		items=enum_previews_group_items
+	)
+
 	pcoll = bpy.utils.previews.new()
 	pcoll.material_previews_dir = ""
 	pcoll.material_previews = ()
 
 	material_collections["main"] = pcoll
+
+	pcoll = bpy.utils.previews.new()
+	pcoll.material_previews_dir = ""
+	pcoll.material_previews = ()
+
+	group_collections["main"] = pcoll
 
 
 def unregister():
@@ -305,10 +402,15 @@ def unregister():
 		bpy.utils.previews.remove(pcoll)
 	material_collections.clear()
 
+	for pcoll in group_collections.values():
+		bpy.utils.previews.remove(pcoll)
+	group_collections.clear()
+
 	# del WindowManager.nexus_material_manager.resource_dir
 	del WindowManager.resource_dir
 	del WindowManager.material_previews
 	del WindowManager.type_mat
+	del WindowManager.group_previews
 
 
 
